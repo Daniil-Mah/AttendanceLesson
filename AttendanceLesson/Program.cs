@@ -91,7 +91,7 @@ app.MapGet("/roles/{roleId}", async (AppDbContext db, int roleId) =>
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapPatch("/roles/{roleId}",async (AppDbContext db, int roleId, UpdateRole dto ) =>
+app.MapPatch("/roles/{roleId}",async (AppDbContext db, UpdateRole dto ,int roleId ) =>
 {
     var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id == roleId);
     if (role == null) return Results.NotFound();
@@ -118,7 +118,7 @@ app.MapGet("/users", async (AppDbContext db) =>
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext db, CreateUser dto) =>
+app.MapPost("/users/", async (AppDbContext db, IPasswordHasher<CreateUser> hasher, CreateUser dto) =>
 {
     dto.Password = hasher.HashPassword(dto, dto.Password);
     await db.Users.AddAsync(new User
@@ -159,7 +159,7 @@ app.MapGet("/users/{userId}", async (AppDbContext db, int userId) =>
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser dto) =>
+app.MapPatch("/users/{userId}", async (AppDbContext db, UpdateUser dto , int userId) =>
 {
     var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
     if (user == null)
