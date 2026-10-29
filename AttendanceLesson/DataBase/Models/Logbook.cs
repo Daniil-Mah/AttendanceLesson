@@ -1,10 +1,14 @@
 using System;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Localization;
 
 namespace AttendanceLesson.DataBase.Models;
 
 public class Logbook
 {
     public int Id { get; set; }
+    public int UserPlaceId { get; set; }
+    public User UserPlace { get; set; }
     public DateTime CreatedAt { get; set; }
     public int UserId { get; set; }
     public User User { get; set; }
@@ -19,6 +23,7 @@ public class Logbook
 
 public enum Status
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     Overslept,
     PersonalReason,
     Forgot
