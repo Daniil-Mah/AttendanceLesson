@@ -26,24 +26,3 @@ jobs:
 
     - name: Build project
       run: dotnet build AttendanceLesson/AttendaceLesson.csproj --no-restore --configuration Release
-
-    - name: Generate Coverage Report
-      uses: danielpalme/ReportGenerator-GitHub-Action@v5
-      with:
-        reports: '**/coverage.cobertura.xml'
-        targetdir: 'coveragereport'
-        reporttypes: 'HtmlInline;MarkdownSummaryGithub'
-
-    - name: Upload Coverage Report Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CodeCoverageReport
-        path: coveragereport
-
-    - name: Publish Test Results
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        name: Test Results
-        path: '**/test-results/*.xml'
-        reporter: dotnet-trx
