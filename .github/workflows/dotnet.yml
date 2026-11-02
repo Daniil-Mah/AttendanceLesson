@@ -22,10 +22,10 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore AttendanceLesson/
+      run: dotnet restore AttendanceLesson/AttendaceLesson.csproj
 
     - name: Build project
-      run: dotnet build AttendanceLesson/ --no-restore --configuration Release
+      run: dotnet build AttendanceLesson/AttendaceLesson.csproj --no-restore --configuration Release
 
     - name: Generate Coverage Report
       uses: danielpalme/ReportGenerator-GitHub-Action@v5
