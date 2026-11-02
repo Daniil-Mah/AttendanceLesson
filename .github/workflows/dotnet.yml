@@ -22,7 +22,7 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore AttendanceLesson/AttendaceLesson.csproj
+      run: dotnet restore AttendanceLesson/AttendanceLesson.csproj
 
     - name: Build project
-      run: dotnet build AttendanceLesson/AttendaceLesson.csproj --no-restore --configuration Release
+      run: dotnet build AttendanceLesson/AttendanceLesson.csproj --no-restore --configuration Release
