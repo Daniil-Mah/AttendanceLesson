@@ -11,8 +11,9 @@ using Microsoft.AspNetCore.Identity;
 using AttendanceLesson.Service;
 using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
+using AttendanceLesson.Extension;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
@@ -58,7 +59,7 @@ builder.Services.AddAuthorization(opt =>
 builder.Services.AddRateLimiter(option=> 
     option.AddPolicy("token", http=>
     {
-        var key = http.User.Identity.Name;
+        var key = http.User.Identity?.Name ?? "anon";
         return RateLimitPartition.GetTokenBucketLimiter(key, _=> new TokenBucketRateLimiterOptions
         {
             TokenLimit=100,
@@ -75,7 +76,13 @@ builder.Services.AddScoped<IPasswordHasher<CreateUser>, PasswordHasher<CreateUse
 
 
 var app = builder.Build();
-
+app.UseExceptionHandler(opt=> opt.Run(async context =>
+{
+    var ex = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var (statusCode, message) = ExceptionHandler.GetError(ex);
+    context.Response.StatusCode = statusCode;
+    await context.Response.WriteAsJsonAsync(new {Message = message});
+}));
 app.UseSwagger();
 app.UseSwaggerUI();
 app.MapOpenApi();
@@ -427,25 +434,19 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
 
 app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, HttpContext http, IConfiguration cfg, Login dto) =>
 {
-    var user = await db.Users.FirstAsync(u=> u.Name == dto.Name);
+    var user = await db.Users
+        .Include(u=>u.Role)
+        .FirstAsync(u=> u.Name == dto.Name);
     
-    if (user == null) return Results.Unauthorized();
-
     if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success) 
         return Results.Unauthorized();
 
     user.RefreshToken = RefreshToken.GenerateRefreshToken();
     user.RefreshTokenExpires = DateTime.UtcNow.AddDays(7);
 
-    await  db.SaveChangesAsync();
+    await db.SaveChangesAsync();
 
-    http.Response.Cookies.Append("refreshToken", user.RefreshToken, new CookieOptions
-    {
-        HttpOnly=true,
-        Secure=true,
-        SameSite=SameSiteMode.Strict,
-        Expires=user.RefreshTokenExpires
-    });
+    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
 
     return Results.Ok(JWT.GenToken(user, cfg));
 })
@@ -456,7 +457,9 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
     var refreshToken = http.Request.Cookies["refreshToken"];
     if (refreshToken == null) return Results.NotFound();
 
-    var user = await db.Users.FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken);
+    var user = await db.Users
+        .Include(u=>u.Role)
+        .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken);
     if (user==null) return Results.Unauthorized();
 
     user.RefreshToken = RefreshToken.GenerateRefreshToken();
@@ -464,14 +467,7 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
 
     await db.SaveChangesAsync();
 
-    http.Response.Cookies.Append("refreshToken", user.RefreshToken, new CookieOptions
-    {
-        HttpOnly=true,
-        Expires=user.RefreshTokenExpires,
-        Secure = true,
-        SameSite = SameSiteMode.Strict,
-        Path = "/"
-    });
+    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
     return Results.Ok(JWT.GenToken(user,cfg));
 })
 .RequireRateLimiting("token");
@@ -489,22 +485,15 @@ app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpCont
     {
         Id = user.Id,
         Name = user.Name,
-        Group = user.Group.Name ?? "no group" ,
+        Group = user.Group?.Name ?? "no group" ,
         Role = user.Role.Name
     };
     var json = JsonSerializer.Serialize(userInfo);
     var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
-    http.Response.Cookies.Append("userInfo", base64, new CookieOptions
-    {
-        HttpOnly = true,
-        Secure = true,
-        SameSite = SameSiteMode.Strict,
-        Expires = DateTimeOffset.UtcNow.AddDays(7),
-        Path = "/"
-    });
-    
-    return  Results.NoContent();
+    http.AppendCookiesInfo("userInfo", base64, (DateTime)user.RefreshTokenExpires);
+
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization();
