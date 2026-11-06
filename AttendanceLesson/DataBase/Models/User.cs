@@ -1,3 +1,5 @@
+using AttendanceLesson.DTO;
+
 namespace AttendanceLesson.DataBase.Models;
 
 public class User
@@ -75,5 +77,24 @@ public class User
     {
         if (PasswordHash != oldPasswordHash) throw new InvalidOperationException("old password incorrent");
         PasswordHash = newPasswordHash;
+    }
+
+    public void UpdateRefreshInfo(string refreshToken ,DateTime expires)
+    {
+        RefreshToken = refreshToken;
+        RefreshTokenExpires = expires;
+    }
+
+    public void SetFields (UpdateUser dto)
+    {
+        var updateGroup = typeof(User).GetProperties();
+            foreach (var p in updateGroup)
+            {
+                var dtoProp = typeof(UpdateUser).GetProperty(p.Name);
+                if (dtoProp == null) continue;
+                var dtoValue = dtoProp.GetValue(dto);
+                if (dtoValue == null) continue;
+                p.SetValue(typeof(User), dtoValue);
+            }
     }
 }

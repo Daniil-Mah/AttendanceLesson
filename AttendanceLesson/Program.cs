@@ -98,7 +98,7 @@ app.MapGet("/roles", async (AppDbContext db) => Results.Ok(await db.Roles.ToArra
 
 app.MapPost("/roles/", async (AppDbContext db, CreateRole dto) =>
 {
-    await db.Roles.AddAsync(new Role {Name=dto.Name.ToLower()});
+    await db.Roles.AddAsync(new Role(dto.Name.ToLower()));
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -131,7 +131,7 @@ app.MapPatch("/roles/{roleId}",async (AppDbContext db,  UpdateRole dto,int roleI
 {
     var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id == roleId);
     if (role == null) return Results.NotFound();
-    if (dto.Name != null) role.Name=dto.Name; 
+    role.SetFields(dto);
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -159,13 +159,7 @@ app.MapGet("/users", async (AppDbContext db) =>
 app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext db, CreateUser dto) =>
 {
     dto.Password = hasher.HashPassword(dto, dto.Password);
-    await db.Users.AddAsync(new User
-    {
-        Name = dto.Name,
-        RoleId = dto.RoleId,
-        GroupId = dto.GroupId,
-        PasswordHash = dto.Password
-    });
+    await db.Users.AddAsync(new User (dto.Name, dto.RoleId, dto.Password));
     await db.SaveChangesAsync();
     return Results.Ok("User is created");
 })
@@ -205,10 +199,7 @@ app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser d
     if (user == null)
         return Results.NotFound("User does not exist");
 
-    if (dto.Name != null) user.Name = dto.Name;
-    if (dto.GroupId != null) user.GroupId = dto.GroupId;
-    if (dto.RoleId != null) user.RoleId = (int)dto.RoleId;
-
+    user.SetFields(dto);
     await db.SaveChangesAsync();
 
     return Results.Ok("User is edited");
@@ -224,7 +215,7 @@ app.MapGet("/groups", async (AppDbContext db) => Results.Ok(await db.Groups.ToAr
 
 app.MapPost("/groups/", async (AppDbContext db, CreateGroup dto) =>
 {
-    await db.Groups.AddAsync(new Group {Name=dto.Name.ToLower()});
+    await db.Groups.AddAsync(new Group (dto.Name.ToLower()));
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -261,7 +252,7 @@ app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto,int gro
 {
     var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id == groupId);
     if (group == null) return Results.NotFound();
-    if (dto.Name != null) group.Name=dto.Name; 
+    group.SetFields(dto);
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -279,7 +270,7 @@ app.MapGet("/lessons", async (AppDbContext db) => Results.Ok(await db.Lessons.To
 
 app.MapPost("/lessons/", async (AppDbContext db, CreateGroup dto) =>
 {
-    await db.Lessons.AddAsync(new Lesson {Name=dto.Name.ToLower()});
+    await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()));
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -314,11 +305,11 @@ app.MapGet("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
 .WithDescription("Request to get lesson by lessonId");
 
 
-app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateGroup dto, int lessonId) =>
+app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int lessonId) =>
 {
     var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id == lessonId);
     if (lesson == null) return Results.NotFound();
-    if (dto.Name != null) lesson.Name=dto.Name; 
+    lesson.SetFields(dto); 
     await db.SaveChangesAsync();
     return Results.Ok();
 })
@@ -356,18 +347,13 @@ app.MapGet("/logbooks" , async(AppDbContext db) =>
 .WithDescription("Request to GET all logs grouping by group ");
 
 
-app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto) =>
+app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto ) =>
 {
     await db.Logbooks.AddAsync(new Logbook
-    {
-        CreatedAt = DateTime.Now,
-        UserId = dto.UserId,
-        GroupId = dto.GroupId,
-        LessonId = dto.LessonId,
-        IsPresent = dto.IsPresent,
-        AbsenceDuration = dto.AbsenceDuration,
-        AbsenceReason = dto.AbsenceReason
-    });
+    (
+        dto.UserPlaceId, DateTime.Now, dto.UserId, dto.GroupId, dto.LessonId,
+        dto.AbsenceDuration, dto.IsPresent, dto.AbsenceReason
+    ));
     await db.SaveChangesAsync();
     return Results.Created("/logbook","Record is creared");
 })
@@ -381,16 +367,7 @@ app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, UpdateLogBook dto,
 {
     var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId);
     if (logbook == null) return Results.NotFound();
-
-    if (dto.UserId != null) logbook.UserId = (int)dto.UserId;
-    if (dto.GroupId != null) logbook.GroupId = (int)dto.GroupId;
-    if (dto.LessonId != null) logbook.LessonId = (int)dto.LessonId;
-    if (dto.CreatedAt != null) logbook.CreatedAt = (DateTime)dto.CreatedAt;
-    if (dto.IsPresent != null) logbook.IsPresent = (bool)dto.IsPresent;
-    if (dto.UserPlaceId != null) logbook.UserPlaceId = (int)dto.UserPlaceId;
-    if (dto.AbsenceReason != null) logbook.AbsenceReason = dto.AbsenceReason;
-    if (dto.AbsenceDuration != null) logbook.AbsenceDuration = (TimeSpan)dto.AbsenceDuration;
-
+    logbook.SetFields(dto);
     await db.SaveChangesAsync();
     return Results.NoContent();
 })
@@ -441,8 +418,7 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
     if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success) 
         return Results.Unauthorized();
 
-    user.RefreshToken = RefreshToken.GenerateRefreshToken();
-    user.RefreshTokenExpires = DateTime.UtcNow.AddDays(7);
+    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
 
     await db.SaveChangesAsync();
 
@@ -462,8 +438,7 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
         .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken);
     if (user==null) return Results.Unauthorized();
 
-    user.RefreshToken = RefreshToken.GenerateRefreshToken();
-    user.RefreshTokenExpires = DateTime.UtcNow.AddDays(7);
+    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
 
     await db.SaveChangesAsync();
 

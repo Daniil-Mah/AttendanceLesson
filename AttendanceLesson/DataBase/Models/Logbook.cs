@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using AttendanceLesson.DTO;
 
 namespace AttendanceLesson.DataBase.Models;
 
@@ -77,6 +78,18 @@ public class Logbook
         AbsenceDuration = absenceDuration;
         IsPresent = isPresent;
         AbsenceReason = absenceReason;
+    }
+    public void SetFields (UpdateLogBook dto)
+    {
+        var updateGroup = typeof(Logbook).GetProperties();
+            foreach (var p in updateGroup)
+            {
+                var dtoProp = typeof(UpdateLogBook).GetProperty(p.Name);
+                if (dtoProp == null) continue;
+                var dtoValue = dtoProp.GetValue(dto);
+                if (dtoValue == null) continue;
+                p.SetValue(typeof(Logbook), dtoValue);
+            }
     }
 }
 

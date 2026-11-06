@@ -1,6 +1,3 @@
-using System;
-using Npgsql.Replication;
-
 namespace AttendanceLesson.Extension;
 
 public static class HttpContextExtension

@@ -1,3 +1,5 @@
+using AttendanceLesson.DTO;
+
 namespace AttendanceLesson.DataBase.Models;
 
 public class Role
@@ -17,5 +19,17 @@ public class Role
     public Role (string name)
     {
         Name = name;
+    }
+    public void SetFields (UpdateRole dto)
+    {
+        var updateGroup = typeof(Role).GetProperties();
+            foreach (var p in updateGroup)
+            {
+                var dtoProp = typeof(UpdateRole).GetProperty(p.Name);
+                if (dtoProp == null) continue;
+                var dtoValue = dtoProp.GetValue(dto);
+                if (dtoValue == null) continue;
+                p.SetValue(typeof(Role), dtoValue);
+            }
     }
 }

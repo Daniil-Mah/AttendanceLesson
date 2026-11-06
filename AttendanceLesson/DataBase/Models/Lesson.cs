@@ -1,4 +1,4 @@
-using System;
+using AttendanceLesson.DTO;
 
 namespace AttendanceLesson.DataBase.Models;
 
@@ -15,9 +15,22 @@ public class Lesson
             _name = value;
         }
     }
+
     private Lesson () {}
     public Lesson (string name)
     {
         Name = name;
+    }
+    public void SetFields (UpdateLesson dto)
+    {
+        var updateGroup = typeof(Group).GetProperties();
+            foreach (var p in updateGroup)
+            {
+                var dtoProp = typeof(UpdateLesson).GetProperty(p.Name);
+                if (dtoProp == null) continue;
+                var dtoValue = dtoProp.GetValue(dto);
+                if (dtoValue == null) continue;
+                p.SetValue(typeof(Lesson), dtoValue);
+            }
     }
 }

@@ -22,7 +22,7 @@ public class JWT
             issuer: cfg["JWT:Issuer"],
             audience: cfg["JWT:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddSeconds(5),
             signingCredentials: creds
         );
         return new JwtSecurityTokenHandler().WriteToken(tokem);
