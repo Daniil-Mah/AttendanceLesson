@@ -109,7 +109,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
 
-            e.HasIndex(x => new { x.UserId, x.LessonId }).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.LessonId, x.CreatedAt }).IsUnique();
             e.HasIndex(x => x.GroupId);
             e.HasIndex(x => x.LessonId);
             e.HasIndex(x => x.CreatedAt);

@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json.Serialization;
 using AttendanceLesson.DTO;
 
@@ -88,7 +89,8 @@ public class Logbook
                 if (dtoProp == null) continue;
                 var dtoValue = dtoProp.GetValue(dto);
                 if (dtoValue == null) continue;
-                p.SetValue(typeof(Logbook), dtoValue);
+                if (p.Name == "IsPresent" && (bool)dtoValue == true) AbsenceReason = null;
+                p.SetValue(this, dtoValue, BindingFlags.SetProperty | BindingFlags.NonPublic | BindingFlags.Instance, null,null,null);
             }
     }
 }
@@ -98,5 +100,5 @@ public enum Status
     [JsonConverter(typeof(JsonStringEnumConverter))]
     Overslept,
     PersonalReason,
-    Forgot
+    Forgot, Null
 }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using AttendanceLesson.DTO;
 
 namespace AttendanceLesson.DataBase.Models;
@@ -29,7 +30,8 @@ public class Group
                 if (dtoProp == null) continue;
                 var dtoValue = dtoProp.GetValue(dto);
                 if (dtoValue == null) continue;
-                p.SetValue(typeof(Group), dtoValue);
+                p.SetValue(this, dtoValue, BindingFlags.SetProperty | BindingFlags.NonPublic | BindingFlags.Instance, null,null,null);
+
             }
     }
 }

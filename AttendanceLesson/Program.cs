@@ -22,7 +22,7 @@ builder.Services.AddSwaggerGen(opt =>
 {
     opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name="Authoriation",
+        Name="Authorization",
         Description="JWT",
         In=ParameterLocation.Header,
         Type=SecuritySchemeType.Http,
@@ -31,7 +31,7 @@ builder.Services.AddSwaggerGen(opt =>
     });
     opt.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("Bearer",doc)] =[] 
+        [new OpenApiSecuritySchemeReference("Bearer",doc)] =[]
     });
 });
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(opt =>
@@ -44,7 +44,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateIssuerSigningKey=true,
         ValidIssuer=builder.Configuration["JWT:Issuer"],
         ValidAudience=builder.Configuration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!)), 
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!)),
         ClockSkew = TimeSpan.Zero
     };
 });
@@ -55,10 +55,12 @@ builder.Services.AddAuthorization(opt =>
     opt.AddPolicy("headman", p=> p.RequireRole("headman"));
     opt.AddPolicy("student", p=> p.RequireRole("student"));
 });
-builder.Services.AddRateLimiter(option=> 
+builder.Services.AddRateLimiter(option=>
     option.AddPolicy("token", http=>
     {
-        var key = http.User.Identity?.Name ?? "anon";
+        var key = http.User.Identity?.Name 
+            ?? http.Connection.RemoteIpAddress?.ToString() 
+            ?? "anon";
         return RateLimitPartition.GetTokenBucketLimiter(key, _=> new TokenBucketRateLimiterOptions
         {
             TokenLimit=100,
@@ -66,7 +68,7 @@ builder.Services.AddRateLimiter(option=>
             TokensPerPeriod = 5,
             AutoReplenishment = true,
             QueueLimit = 5,
-        });  
+        });
     })
 );
 builder.Services.AddHostedService<SetAbsence>();
@@ -98,7 +100,7 @@ app.MapPost("/roles/", async (AppDbContext db, CreateRole dto) =>
 {
     await db.Roles.AddAsync(new Role(dto.Name.ToLower()));
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.Created("/roles","Role created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -110,7 +112,7 @@ app.MapDelete("/roles/{roleId}", async (AppDbContext db, int roleId) =>
     if (role == null) return Results.NotFound();
     db.Roles.Remove(role);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -125,13 +127,13 @@ app.MapGet("/roles/{roleId}", async (AppDbContext db, int roleId) =>
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapPatch("/roles/{roleId}",async (AppDbContext db,  UpdateRole dto,int roleId ) =>
+app.MapPatch("/roles/{roleId}",async (AppDbContext db,  string name,int roleId ) =>
 {
     var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id == roleId);
     if (role == null) return Results.NotFound();
-    role.SetFields(dto);
+    role.SetRole(name);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -159,7 +161,7 @@ app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext d
     dto.Password = hasher.HashPassword(dto, dto.Password);
     await db.Users.AddAsync(new User (dto.Name, dto.RoleId, dto.Password));
     await db.SaveChangesAsync();
-    return Results.Ok("User is created");
+    return Results.Created("/users","User is created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -173,7 +175,7 @@ app.MapDelete("/users/{userId}", async (AppDbContext db, int userId) =>
 
     db.Users.Remove(user);
     await db.SaveChangesAsync();
-    return Results.Ok("User is deleted");
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -181,10 +183,19 @@ app.MapDelete("/users/{userId}", async (AppDbContext db, int userId) =>
 
 app.MapGet("/users/{userId}", async (AppDbContext db, int userId) =>
 {
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    var user = await db.Users
+        .Include(u=> u.Role)
+        .Include(u=> u.Group)        
+        .FirstOrDefaultAsync(u => u.Id == userId);
 
     return user != null
-        ? Results.Ok(user)
+        ? Results.Ok(new {
+            Id = user.Id , 
+            Name = user.Name,
+            Role = user.Role.Name,
+            Group = user?.Group.Name ?? "not group",
+            IsArchived = user.IsArchive 
+            })
         : Results.NotFound("User does not exist");
 })
 .RequireRateLimiting("token")
@@ -200,7 +211,7 @@ app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser d
     user.SetFields(dto);
     await db.SaveChangesAsync();
 
-    return Results.Ok("User is edited");
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -215,7 +226,7 @@ app.MapPost("/groups/", async (AppDbContext db, CreateGroup dto) =>
 {
     await db.Groups.AddAsync(new Group (dto.Name.ToLower()));
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.Created("/group", "group is created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -227,7 +238,7 @@ app.MapDelete("/groups/{groupId}", async (AppDbContext db, int groupId) =>
     if (group == null) return Results.NotFound();
     db.Groups.Remove(group);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -252,7 +263,7 @@ app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto,int gro
     if (group == null) return Results.NotFound();
     group.SetFields(dto);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -265,12 +276,11 @@ app.MapGet("/lessons", async (AppDbContext db) => Results.Ok(await db.Lessons.To
 .WithTags("Lesson")
 .WithDescription("Request to GET all lessons ");
 
-
 app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto) =>
 {
     await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()));
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.Created("/lesson", "lesson is created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -284,7 +294,7 @@ app.MapDelete("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
     if (lesson == null) return Results.NotFound();
     db.Lessons.Remove(lesson);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -307,9 +317,9 @@ app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int
 {
     var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id == lessonId);
     if (lesson == null) return Results.NotFound();
-    lesson.SetFields(dto); 
+    lesson.SetFields(dto);
     await db.SaveChangesAsync();
-    return Results.Ok();
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
@@ -329,11 +339,12 @@ app.MapGet("/logbooks" , async(AppDbContext db) =>
         Name = r.Key.Name,
         Info = r.Select(a=> new Info
         {
-            UseId = a.UserId,
+            User = a.User.Name,
+            UserPlace = a.UserPlace.Name,
             LessonId = a.LessonId,
             AbsenceDuration = a.AbsenceDuration,
             AbsenceReason = a.AbsenceReason,
-            AbsenceTime = a.CreatedAt 
+            AbsenceTime = a.CreatedAt
         }).ToArray()
     }
     ).ToArray();
@@ -349,7 +360,7 @@ app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto ) =>
 {
     await db.Logbooks.AddAsync(new Logbook
     (
-        dto.UserPlaceId, DateTime.Now, dto.UserId, dto.GroupId, dto.LessonId,
+        dto.UserPlaceId, DateTime.UtcNow, dto.UserId, dto.GroupId, dto.LessonId,
         dto.AbsenceDuration, dto.IsPresent, dto.AbsenceReason
     ));
     await db.SaveChangesAsync();
@@ -372,7 +383,7 @@ app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, UpdateLogBook dto,
 .RequireRateLimiting("token")
 .RequireAuthorization(p=> p.RequireRole("admin","teacher","headman"))
 .WithTags("Logbook")
-.WithDescription("Request to PATCH (edit) log by groupId");
+.WithDescription("Request to PATCH (edit) log by logId");
 
 app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId) =>
 {
@@ -382,7 +393,7 @@ app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId) =>
     db.Logbooks.Remove(logbook);
     await db.SaveChangesAsync();
 
-    return Results.NoContent(); 
+    return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization(p=> p.RequireRole("admin","teaсher","headman"))
@@ -394,11 +405,20 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
 {
     var logbook = await db.Logbooks
                         .Where(l=> l.GroupId == groupId)
-                        .Include(l=> l.Group) 
+                        .Include(l=> l.Group)
                         .Include(l=> l.Lesson)
-                        .Include(l=> l.User) 
+                        .Include(l=> l.User)
                         .Include(l=> l.UserPlace)
                         .OrderBy(r=> r.CreatedAt)
+                        .Select(u => new Info
+                        {
+                            User = u.User.Name,
+                            UserPlace = u.UserPlace.Name,
+                            LessonId = u.LessonId,
+                            AbsenceDuration = u.AbsenceDuration,
+                            AbsenceReason = u.AbsenceReason,
+                            AbsenceTime = u.CreatedAt
+                        })
                         .ToArrayAsync();
     return Results.Ok(logbook);
 })
@@ -412,17 +432,17 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
     var user = await db.Users
         .Include(u=>u.Role)
         .FirstOrDefaultAsync(u=> u.Name == dto.Name);
-    
+
     if (user == null) return Results.Unauthorized();
 
-    if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success) 
+    if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success)
         return Results.Unauthorized();
 
     user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
 
     await db.SaveChangesAsync();
 
-    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
+    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
 
     return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
@@ -438,11 +458,12 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
         .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken);
     if (user==null) return Results.Unauthorized();
 
-    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
+    if (user.RefreshTokenExpires < DateTime.UtcNow) return Results.Unauthorized();
 
+    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
     await db.SaveChangesAsync();
 
-    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
+    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
     return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
 .RequireRateLimiting("token");

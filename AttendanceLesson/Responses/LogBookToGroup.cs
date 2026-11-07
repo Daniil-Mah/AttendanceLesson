@@ -11,7 +11,8 @@ public class LogBookToGroup
 public class Info
 {
     public DateTime AbsenceTime { get; set; }
-    public int UseId { get; set; }
+    public string User { get; set; }
+    public string UserPlace {get;set;}
     public int LessonId { get; set; }
     public TimeSpan AbsenceDuration { get; set; }
     public Status? AbsenceReason {get;set;}
