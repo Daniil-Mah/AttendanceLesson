@@ -15,6 +15,17 @@ public class Lesson
             _name = value;
         }
     }
+    private int _teacherId;
+    public int TeacherId 
+    {
+        get => _teacherId;
+        private set
+        {
+            if (value < 0 ) throw new ArgumentException ("teacherId must be greter than 0");
+            _teacherId = value;
+        }
+    }
+    public User Teacher {get;set;}
 
     private Lesson () {}
     public Lesson (string name)

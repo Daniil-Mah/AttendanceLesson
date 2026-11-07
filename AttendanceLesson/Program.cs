@@ -50,12 +50,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 });
 builder.Services.AddAuthorization(opt =>
 {
-    opt.AddPolicy("admin",p => p.RequireRole("admin"));
+    opt.AddPolicy("admin", p => p.RequireRole("admin"));
     opt.AddPolicy("teacher", p=> p.RequireRole("teacher"));
     opt.AddPolicy("headman", p=> p.RequireRole("headman"));
     opt.AddPolicy("student", p=> p.RequireRole("student"));
 });
-
 builder.Services.AddRateLimiter(option=> 
     option.AddPolicy("token", http=>
     {
@@ -70,10 +69,9 @@ builder.Services.AddRateLimiter(option=>
         });  
     })
 );
-
+builder.Services.AddHostedService<SetAbsence>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IPasswordHasher<CreateUser>, PasswordHasher<CreateUser>>();
-
 
 var app = builder.Build();
 app.UseExceptionHandler(opt=> opt.Run(async context =>
@@ -93,7 +91,7 @@ app.UseRateLimiter();
 
 app.MapGet("/roles", async (AppDbContext db) => Results.Ok(await db.Roles.ToArrayAsync()))
 .RequireRateLimiting("token")
-.RequireAuthorization(p=> p.RequireRole("admin","teacher","headman"))
+.RequireAuthorization("admin")
 .WithTags("Role");
 
 app.MapPost("/roles/", async (AppDbContext db, CreateRole dto) =>
@@ -244,7 +242,7 @@ app.MapGet("/groups/{groupId}", async (AppDbContext db, int groupId) =>
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
-.WithTags("Role")
+.WithTags("Group")
 .WithDescription("Request to GET group by groupId");
 
 
@@ -268,7 +266,7 @@ app.MapGet("/lessons", async (AppDbContext db) => Results.Ok(await db.Lessons.To
 .WithDescription("Request to GET all lessons ");
 
 
-app.MapPost("/lessons/", async (AppDbContext db, CreateGroup dto) =>
+app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto) =>
 {
     await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()));
     await db.SaveChangesAsync();
@@ -358,7 +356,7 @@ app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto ) =>
     return Results.Created("/logbook","Record is creared");
 })
 .RequireRateLimiting("token")
-.RequireAuthorization(p=> p.RequireRole("admin","teaher","headman"))
+.RequireAuthorization(p=> p.RequireRole("admin","teacher","headman"))
 .WithTags("Logbook")
 .WithDescription("Request to POST (add) log");
 
@@ -372,7 +370,7 @@ app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, UpdateLogBook dto,
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
-.RequireAuthorization(p=> p.RequireRole("admin","teaher","headman"))
+.RequireAuthorization(p=> p.RequireRole("admin","teacher","headman"))
 .WithTags("Logbook")
 .WithDescription("Request to PATCH (edit) log by groupId");
 
@@ -387,7 +385,7 @@ app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId) =>
     return Results.NoContent(); 
 })
 .RequireRateLimiting("token")
-.RequireAuthorization(p=> p.RequireRole("admin","teaher","headman"))
+.RequireAuthorization(p=> p.RequireRole("admin","teaсher","headman"))
 .WithTags("Logbook")
 .WithDescription("Request to DELETE log by logbooId");
 
@@ -405,7 +403,7 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
     return Results.Ok(logbook);
 })
 .RequireRateLimiting("token")
-.RequireAuthorization(p=> p.RequireRole("admin","teaher","headman"))
+.RequireAuthorization(p=> p.RequireRole("admin","teacher","headman"))
 .WithTags("Logbook")
 .WithDescription("Request to GET log by groupId");
 
@@ -413,8 +411,10 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
 {
     var user = await db.Users
         .Include(u=>u.Role)
-        .FirstAsync(u=> u.Name == dto.Name);
+        .FirstOrDefaultAsync(u=> u.Name == dto.Name);
     
+    if (user == null) return Results.Unauthorized();
+
     if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success) 
         return Results.Unauthorized();
 
@@ -424,7 +424,7 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
 
     http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
 
-    return Results.Ok(JWT.GenToken(user, cfg));
+    return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
 .RequireRateLimiting("token");
 
@@ -443,7 +443,7 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
     await db.SaveChangesAsync();
 
     http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires); 
-    return Results.Ok(JWT.GenToken(user,cfg));
+    return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
 .RequireRateLimiting("token");
 

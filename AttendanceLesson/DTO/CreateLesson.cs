@@ -2,5 +2,5 @@ namespace AttendanceLesson.DTO;
 
 public class CreateLesson
 {
-    public sbyte Name { get; set; }
+    public string Name { get; set; }
 }

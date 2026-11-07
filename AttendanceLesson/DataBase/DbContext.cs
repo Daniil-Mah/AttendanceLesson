@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Lesson> Lessons => Set<Lesson>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Logbook> Logbooks => Set<Logbook>();
+    public DbSet<Schedule> Schedules => Set<Schedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -117,5 +118,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 "CK_Logbook_AbsenceReason",
                 "\"IsPresent\" = TRUE OR \"AbsenceReason\" IS NOT NULL"));
         });
+
+        modelBuilder.Entity<Schedule>(e =>
+        {
+            e.HasKey(s=> s.Id);
+            e.Property(s=> s.LessonId).IsRequired();
+            e.HasIndex(s=>s.LessonId).IsUnique();
+            e.Property(s=> s.LessonId).IsRequired();
+            e.HasIndex(s=>s.LessonId).IsUnique();
+            e.Property(s=> s.Date).IsRequired();
+            e.HasIndex(s=>s.Date).IsUnique();  
+            e.Property(s=> s.EndTime).IsRequired();
+            e.HasIndex(s=>s.EndTime).IsUnique();  
+            e.Property(s=> s.StartTime).IsRequired();
+            e.HasIndex(s=>s.StartTime).IsUnique();  
+        }); 
     }
 }
