@@ -356,13 +356,16 @@ app.MapGet("/logbooks" , async(AppDbContext db) =>
 .WithDescription("Request to GET all logs grouping by group ");
 
 
-app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto ) =>
+app.MapPost("/logbooks/", async (AppDbContext db ,ClaimsPrincipal claims, CreateLogBook dto ) =>
 {
+    var currentUser = int.Parse(claims.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     await db.Logbooks.AddAsync(new Logbook
     (
-        dto.UserPlaceId, DateTime.UtcNow, dto.UserId, dto.GroupId, dto.LessonId,
+        currentUser, DateTime.UtcNow, dto.UserId, dto.GroupId, dto.LessonId,
         dto.AbsenceDuration, dto.IsPresent, dto.AbsenceReason
     ));
+
     await db.SaveChangesAsync();
     return Results.Created("/logbook","Record is creared");
 })
@@ -372,11 +375,14 @@ app.MapPost("/logbooks/", async (AppDbContext db , CreateLogBook dto ) =>
 .WithDescription("Request to POST (add) log");
 
 
-app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, UpdateLogBook dto, int logbookId) =>
+app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, ClaimsPrincipal cl, UpdateLogBook dto, int logbookId) =>
 {
+    var currentUser = int.Parse(cl.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId);
     if (logbook == null) return Results.NotFound();
-    logbook.SetFields(dto);
+    
+    logbook.SetFields(dto, currentUser);
     await db.SaveChangesAsync();
     return Results.NoContent();
 })
@@ -494,6 +500,58 @@ app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpCont
 .RequireRateLimiting("token")
 .RequireAuthorization();
 
-// app.MapGet("/schedules", async ())
+app.MapPost("/users/{id}archive", async (AppDbContext db, int id) =>
+{
+    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == id);
+    if (user == null) return Results.NotFound();
+    if (user.IsArchive == true) return Results.BadRequest();
+    user.Archived();
+    await db.SaveChangesAsync();
+    return Results.NoContent(); 
+})
+.RequireAuthorization(p=> p.RequireRole("admin"))
+.RequireRateLimiting("token");
+
+app.MapPost("/users/set-password", async (AppDbContext db, ClaimsPrincipal claims) =>
+{
+    var currentUser = int.Parse(claims.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == currentUser);
+    if (user == null) return Results.NotFound();
+    if (user.IsArchive == true) return Results.BadRequest();
+    user.Archived();
+    await db.SaveChangesAsync();
+    return Results.NoContent(); 
+})
+.RequireAuthorization()
+.RequireRateLimiting("token");
+
+app.MapGet("/schedules", async (AppDbContext db ) => 
+{
+    var schedules = await db.Schedules
+        .Include(s=> s.Group)
+        .Include(s=> s.Lesson)
+        .Select(p=> new
+        {
+            Id = p.Id,
+            Date = p.Date,
+            Lesson = p.Lesson.Name,
+            Group = p.Group.Name,
+            StartAt = p.StartTime,
+            EndAt = p.EndTime
+        })
+        .ToArrayAsync();
+})
+.RequireAuthorization(p=> p.RequireRole("admin"))
+.RequireRateLimiting("token");
+
+app.MapPost("/schedules/", async (AppDbContext db, CreateSchedule dto) =>
+{
+    var schedule = new Schedule(dto.GroupId, dto.LessonId, dto.Date, dto.StartTime, dto.EndTime);
+    await db.Schedules.AddAsync(schedule);
+    await db.SaveChangesAsync();
+})
+.RequireAuthorization("admin")
+.RequireRateLimiting("token");
+
 
 app.Run();

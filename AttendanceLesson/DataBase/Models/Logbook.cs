@@ -80,8 +80,9 @@ public class Logbook
         IsPresent = isPresent;
         AbsenceReason = absenceReason;
     }
-    public void SetFields (UpdateLogBook dto)
+    public void SetFields (UpdateLogBook dto, int userPlaceId)
     {
+        UserPlaceId = userPlaceId;
         var updateGroup = typeof(Logbook).GetProperties();
             foreach (var p in updateGroup)
             {
@@ -89,16 +90,19 @@ public class Logbook
                 if (dtoProp == null) continue;
                 var dtoValue = dtoProp.GetValue(dto);
                 if (dtoValue == null) continue;
-                if (p.Name == "IsPresent" && (bool)dtoValue == true) AbsenceReason = null;
-                p.SetValue(this, dtoValue, BindingFlags.SetProperty | BindingFlags.NonPublic | BindingFlags.Instance, null,null,null);
+
+                p.SetValue(this, dtoValue, 
+                    BindingFlags.SetProperty | BindingFlags.NonPublic | BindingFlags.Instance,
+                    null,null,null);
             }
+        if (dto.IsPresent == true) AbsenceReason = null; 
     }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum Status
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     Overslept,
     PersonalReason,
-    Forgot, Null
+    Forgot
 }

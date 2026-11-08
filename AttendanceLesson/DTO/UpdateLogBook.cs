@@ -7,9 +7,6 @@ namespace AttendanceLesson.DTO;
 public class UpdateLogBook
 {
     [Range(0,int.MaxValue)]
-    public int? UserPlaceId { get; set; } = null;
-
-    [Range(0,int.MaxValue)]
     public int? UserId { get; set; } = null;
     
     [Range(0,(int)LengthValues.GroupsMax)]

@@ -1,10 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AttendanceLesson.DTO;
 
 public class CreateSchedule
 {
-    public int GroupId { get; private set; }
-    public int LessonId { get; private set; }
-    public DateOnly Date { get; private set; }
-    public TimeOnly StartTime { get; private set; }
-    public TimeOnly EndTime { get; private set; }
+    [Range((int)LengthValues.GroupsMin, (int)LengthValues.GroupsMax)]
+    public int GroupId { get; set; }
+
+    [Range((int)LengthValues.LessonMin, (int)LengthValues.LessonMax)]
+    public int LessonId { get; set; }
+
+    public DateOnly Date { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
 }

@@ -9,9 +9,6 @@ public class CreateLogBook
     [Range(0,int.MaxValue)]
     public required int UserId { get; set; }
 
-    [Required]
-    [Range(0,int.MaxValue)]
-    public required int UserPlaceId { get; set; }
 
     [Required]
     [Range((int)LengthValues.GroupsMin, (int)LengthValues.GroupsMax)]
