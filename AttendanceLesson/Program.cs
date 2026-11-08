@@ -494,4 +494,6 @@ app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpCont
 .RequireRateLimiting("token")
 .RequireAuthorization();
 
+// app.MapGet("/schedules", async ())
+
 app.Run();

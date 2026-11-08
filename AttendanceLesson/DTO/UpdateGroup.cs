@@ -1,6 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AttendanceLesson.DTO;
 
 public class UpdateGroup
 {
-    public string? Name { get; set; } = null;
+    [Required]
+    [StringLength(8 , MinimumLength = 5)]
+    public required string Name { get; set; }
 }

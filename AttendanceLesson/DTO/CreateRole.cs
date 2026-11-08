@@ -1,6 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AttendanceLesson.DTO;
 
 public class CreateRole
 {
-    public string Name {get;set;}
+    [Required]
+    [StringLength((int)LengthValues.NameMax, MinimumLength = (int)LengthValues.NameMin)]
+    public required string Name {get;set;}
 }
