@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AttendanceLesson.DTO;
 
-public class CreateGroup
-{
-    [Required]
-    [StringLength(8, MinimumLength = 5 )]
-    public required string Name { get; set; }
-}
+public record CreateGroup 
+(
+    [Required, StringLength(8, MinimumLength = 5 )] string Name 
+);

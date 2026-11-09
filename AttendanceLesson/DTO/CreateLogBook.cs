@@ -3,27 +3,12 @@ using AttendanceLesson.DataBase.Models;
 using AttendanceLesson.Validation;
 namespace AttendanceLesson.DTO;
 
-public class CreateLogBook
-{
-    [Required]
-    [Range(0,int.MaxValue)]
-    public required int UserId { get; set; }
-
-
-    [Required]
-    [Range((int)LengthValues.GroupsMin, (int)LengthValues.GroupsMax)]
-    public required int GroupId { get; set; }
-
-    [Required]
-    [Range((int)LengthValues.LessonMin, (int)LengthValues.LessonMax)]
-    public required int LessonId {get;set;}
-
-    [Required]
-    [TimeSpanNonNegative]
-    public required TimeSpan AbsenceDuration {get;set;}
-
-    [Required]
-    public required bool IsPresent {get;set;}
-
-    public Status? AbsenceReason {get;set;}
-}
+public record CreateLogBook 
+(
+    [Required, Range(0,int.MaxValue)] int UserId,
+    [Required, Range((int)LengthValues.GroupsMin, (int)LengthValues.GroupsMax)] int GroupId,
+    [Required, Range((int)LengthValues.LessonMin, (int)LengthValues.LessonMax)] int LessonId,
+    [Required, TimeSpanNonNegative] TimeSpan AbsenceDuration,
+    [Required] bool IsPresent,
+    Status? AbsenceReason
+);

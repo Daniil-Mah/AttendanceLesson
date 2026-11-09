@@ -161,8 +161,7 @@ app.MapGet("/users", async (AppDbContext db, CancellationToken ct) =>
 
 app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext db, CreateUser dto, CancellationToken ct) =>
 {
-    dto.Password = hasher.HashPassword(dto, dto.Password);
-    await db.Users.AddAsync(new User (dto.Name, dto.RoleId, dto.Password), ct);
+    await db.Users.AddAsync(new User (dto.Name, dto.RoleId, hasher.HashPassword(dto, dto.Password)), ct);
     await db.SaveChangesAsync(ct);
     return Results.Created("/users","User is created");
 })

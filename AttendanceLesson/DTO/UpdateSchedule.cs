@@ -1,10 +1,10 @@
 namespace AttendanceLesson.DTO;
 
-public class UpdateSchedule
-{
-    public int GroupId { get;  set; }
-    public int LessonId { get; set; }
-    public DateOnly Date { get; set; }
-    public TimeOnly StartTime { get; set; }
-    public TimeOnly EndTime { get; set; }
-}
+public record UpdateSchedule
+( 
+    int? GroupId = null,
+    int? LessonId = null,
+    DateOnly? Date = null,
+    TimeOnly? StartTime = null,
+    TimeOnly? EndTime = null
+);
