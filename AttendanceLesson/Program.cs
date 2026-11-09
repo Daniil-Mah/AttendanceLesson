@@ -512,13 +512,13 @@ app.MapPost("/users/{id}archive", async (AppDbContext db, int id) =>
 .RequireAuthorization(p=> p.RequireRole("admin"))
 .RequireRateLimiting("token");
 
-app.MapPost("/users/set-password", async (AppDbContext db, ClaimsPrincipal claims) =>
+app.MapPost("/users/set-password", async (AppDbContext db, ClaimsPrincipal claims, IPasswordHasher <User> hasher,string newPassword) =>
 {
     var currentUser = int.Parse(claims.FindFirstValue(ClaimTypes.NameIdentifier)!);
     var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == currentUser);
     if (user == null) return Results.NotFound();
-    if (user.IsArchive == true) return Results.BadRequest();
-    user.Archived();
+    if (user.IsArchive == true) return Results.Conflict();
+    user.ChangePassword(user.PasswordHash, hasher.HashPassword(user,newPassword));
     await db.SaveChangesAsync();
     return Results.NoContent(); 
 })
