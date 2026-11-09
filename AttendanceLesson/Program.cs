@@ -91,55 +91,55 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-app.MapGet("/roles", async (AppDbContext db) => Results.Ok(await db.Roles.ToArrayAsync()))
+app.MapGet("/roles", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Roles.ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapPost("/roles/", async (AppDbContext db, CreateRole dto) =>
+app.MapPost("/roles/", async (AppDbContext db, CreateRole dto, CancellationToken ct) =>
 {
-    await db.Roles.AddAsync(new Role(dto.Name.ToLower()));
-    await db.SaveChangesAsync();
+    await db.Roles.AddAsync(new Role(dto.Name.ToLower()), ct);
+    await db.SaveChangesAsync(ct);
     return Results.Created("/roles","Role created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapDelete("/roles/{roleId}", async (AppDbContext db, int roleId) =>
+app.MapDelete("/roles/{roleId}", async (AppDbContext db, int roleId, CancellationToken ct) =>
 {
-    var role = await db.Roles.FirstOrDefaultAsync(r => r.Id== roleId);
+    var role = await db.Roles.FirstOrDefaultAsync(r => r.Id== roleId, ct);
     if (role == null) return Results.NotFound();
     db.Roles.Remove(role);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapGet("/roles/{roleId}", async (AppDbContext db, int roleId) =>
+app.MapGet("/roles/{roleId}", async (AppDbContext db, int roleId, CancellationToken ct) =>
 {
-    var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id==roleId);
+    var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id==roleId, ct);
     return role != null ? Results.Ok(role) : Results.NotFound();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapPatch("/roles/{roleId}",async (AppDbContext db,  string name,int roleId ) =>
+app.MapPatch("/roles/{roleId}",async (AppDbContext db, UpdateRole dto, int roleId, CancellationToken ct) =>
 {
-    var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id == roleId);
+    var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id == roleId, ct);
     if (role == null) return Results.NotFound();
-    role.SetRole(name);
-    await db.SaveChangesAsync();
+    role.SetRole(dto.Name);
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
 
-app.MapGet("/users", async (AppDbContext db) =>
+app.MapGet("/users", async (AppDbContext db, CancellationToken ct) =>
 {
     var users = await db.Users
         .Include(u => u.Role)
@@ -148,7 +148,7 @@ app.MapGet("/users", async (AppDbContext db) =>
             Id = u.Id,
             Name = u.Name,
             Role = u.Role!.Name,
-        }).ToArrayAsync();
+        }).ToArrayAsync(ct);
 
     return Results.Ok(users);
 })
@@ -156,37 +156,37 @@ app.MapGet("/users", async (AppDbContext db) =>
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext db, CreateUser dto) =>
+app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext db, CreateUser dto, CancellationToken ct) =>
 {
     dto.Password = hasher.HashPassword(dto, dto.Password);
-    await db.Users.AddAsync(new User (dto.Name, dto.RoleId, dto.Password));
-    await db.SaveChangesAsync();
+    await db.Users.AddAsync(new User (dto.Name, dto.RoleId, dto.Password), ct);
+    await db.SaveChangesAsync(ct);
     return Results.Created("/users","User is created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapDelete("/users/{userId}", async (AppDbContext db, int userId) =>
+app.MapDelete("/users/{userId}", async (AppDbContext db, int userId, CancellationToken ct) =>
 {
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
     if (user == null)
         return Results.NotFound("User not found");
 
     db.Users.Remove(user);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapGet("/users/{userId}", async (AppDbContext db, int userId) =>
+app.MapGet("/users/{userId}", async (AppDbContext db, int userId, CancellationToken ct) =>
 {
     var user = await db.Users
         .Include(u=> u.Role)
         .Include(u=> u.Group)        
-        .FirstOrDefaultAsync(u => u.Id == userId);
+        .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
     return user != null
         ? Results.Ok(new {
@@ -202,14 +202,14 @@ app.MapGet("/users/{userId}", async (AppDbContext db, int userId) =>
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser dto) =>
+app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser dto, CancellationToken ct) =>
 {
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
     if (user == null)
         return Results.NotFound("User does not exist");
 
     user.SetFields(dto);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
 
     return Results.NoContent();
 })
@@ -217,27 +217,27 @@ app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser d
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapGet("/groups", async (AppDbContext db) => Results.Ok(await db.Groups.ToArrayAsync()))
+app.MapGet("/groups", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Groups.ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Group");
 
-app.MapPost("/groups/", async (AppDbContext db, CreateGroup dto) =>
+app.MapPost("/groups/", async (AppDbContext db, CreateGroup dto, CancellationToken ct) =>
 {
-    await db.Groups.AddAsync(new Group (dto.Name.ToLower()));
-    await db.SaveChangesAsync();
+    await db.Groups.AddAsync(new Group (dto.Name.ToLower()) ,ct);
+    await db.SaveChangesAsync(ct);
     return Results.Created("/group", "group is created");
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Group");
 
-app.MapDelete("/groups/{groupId}", async (AppDbContext db, int groupId) =>
+app.MapDelete("/groups/{groupId}", async (AppDbContext db, int groupId, CancellationToken ct) =>
 {
-    var group = await db.Groups.FirstOrDefaultAsync(g => g.Id== groupId);
+    var group = await db.Groups.FirstOrDefaultAsync(g => g.Id== groupId, ct);
     if (group == null) return Results.NotFound();
     db.Groups.Remove(group);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
@@ -246,9 +246,9 @@ app.MapDelete("/groups/{groupId}", async (AppDbContext db, int groupId) =>
 .WithDescription("Request to DELETE group by groupId");
 
 
-app.MapGet("/groups/{groupId}", async (AppDbContext db, int groupId) =>
+app.MapGet("/groups/{groupId}", async (AppDbContext db, int groupId, CancellationToken ct) =>
 {
-    var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id==groupId);
+    var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id==groupId, ct);
     return group != null ? Results.Ok(group) : Results.NotFound();
 })
 .RequireRateLimiting("token")
@@ -257,12 +257,12 @@ app.MapGet("/groups/{groupId}", async (AppDbContext db, int groupId) =>
 .WithDescription("Request to GET group by groupId");
 
 
-app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto,int groupId) =>
+app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto, int groupId, CancellationToken ct) =>
 {
-    var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id == groupId);
+    var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id == groupId, ct);
     if (group == null) return Results.NotFound();
     group.SetFields(dto);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
@@ -270,16 +270,16 @@ app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto,int gro
 .WithTags("Group")
 .WithDescription("Request to PATCH group by groupId");
 
-app.MapGet("/lessons", async (AppDbContext db) => Results.Ok(await db.Lessons.ToArrayAsync()))
+app.MapGet("/lessons", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Lessons.ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Lesson")
 .WithDescription("Request to GET all lessons ");
 
-app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto) =>
+app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto, CancellationToken ct) =>
 {
-    await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()));
-    await db.SaveChangesAsync();
+    await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()), ct);
+    await db.SaveChangesAsync(ct);
     return Results.Created("/lesson", "lesson is created");
 })
 .RequireRateLimiting("token")
@@ -288,12 +288,12 @@ app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto) =>
 .WithDescription("Request to POST (add) lesson");
 
 
-app.MapDelete("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
+app.MapDelete("/lessons/{lessonId}", async (AppDbContext db, int lessonId, CancellationToken ct) =>
 {
-    var lesson = await db.Lessons.FirstOrDefaultAsync(l => l.Id==lessonId );
+    var lesson = await db.Lessons.FirstOrDefaultAsync(l => l.Id==lessonId, ct);
     if (lesson == null) return Results.NotFound();
     db.Lessons.Remove(lesson);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
@@ -302,9 +302,9 @@ app.MapDelete("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
 .WithDescription("Request to DELETE lesson by lessonId");
 
 
-app.MapGet("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
+app.MapGet("/lessons/{lessonId}", async (AppDbContext db, int lessonId, CancellationToken ct) =>
 {
-    var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id==lessonId);
+    var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id==lessonId, ct);
     return lesson != null ? Results.Ok(lesson) : Results.NotFound();
 })
 .RequireRateLimiting("token")
@@ -313,12 +313,12 @@ app.MapGet("/lessons/{lessonId}", async (AppDbContext db, int lessonId) =>
 .WithDescription("Request to get lesson by lessonId");
 
 
-app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int lessonId) =>
+app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int lessonId, CancellationToken ct) =>
 {
-    var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id == lessonId);
+    var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id == lessonId, ct);
     if (lesson == null) return Results.NotFound();
     lesson.SetFields(dto);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
@@ -327,13 +327,13 @@ app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int
 .WithDescription("Request to PATCH (edit) lesson by lessonId");
 
 
-app.MapGet("/logbooks" , async(AppDbContext db) =>
+app.MapGet("/logbooks" , async(AppDbContext db, CancellationToken ct) =>
 {
     var logs = await db.Logbooks
         .Include(l=> l.Group)
         .Include(l=> l.Lesson)
         .Include(l=> l.User)
-        .ToArrayAsync();
+        .ToArrayAsync(ct);
     var result = logs.GroupBy(l=> l.Group).Select( r=>  new LogBookToGroup
     {
         Name = r.Key.Name,
@@ -356,7 +356,7 @@ app.MapGet("/logbooks" , async(AppDbContext db) =>
 .WithDescription("Request to GET all logs grouping by group ");
 
 
-app.MapPost("/logbooks/", async (AppDbContext db ,ClaimsPrincipal claims, CreateLogBook dto ) =>
+app.MapPost("/logbooks/", async (AppDbContext db ,ClaimsPrincipal claims, CreateLogBook dto, CancellationToken ct ) =>
 {
     var currentUser = int.Parse(claims.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -364,9 +364,9 @@ app.MapPost("/logbooks/", async (AppDbContext db ,ClaimsPrincipal claims, Create
     (
         currentUser, DateTime.UtcNow, dto.UserId, dto.GroupId, dto.LessonId,
         dto.AbsenceDuration, dto.IsPresent, dto.AbsenceReason
-    ));
+    ), ct);
 
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.Created("/logbook","Record is creared");
 })
 .RequireRateLimiting("token")
@@ -375,15 +375,20 @@ app.MapPost("/logbooks/", async (AppDbContext db ,ClaimsPrincipal claims, Create
 .WithDescription("Request to POST (add) log");
 
 
-app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, ClaimsPrincipal cl, UpdateLogBook dto, int logbookId) =>
+app.MapPatch("/logbooks/{logbookId}", async (
+    AppDbContext db, 
+    ClaimsPrincipal cl, 
+    UpdateLogBook dto, 
+    int logbookId, 
+    CancellationToken ct) =>
 {
     var currentUser = int.Parse(cl.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId);
+    var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId, ct);
     if (logbook == null) return Results.NotFound();
     
     logbook.SetFields(dto, currentUser);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent();
 })
 .RequireRateLimiting("token")
@@ -391,13 +396,13 @@ app.MapPatch("/logbooks/{logbookId}", async (AppDbContext db, ClaimsPrincipal cl
 .WithTags("Logbook")
 .WithDescription("Request to PATCH (edit) log by logId");
 
-app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId) =>
+app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId, CancellationToken ct) =>
 {
-   var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId);
+   var logbook = await db.Logbooks.FirstOrDefaultAsync(l=> l.Id == logbookId, ct);
    if (logbook == null) return Results.NotFound();
 
     db.Logbooks.Remove(logbook);
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
 
     return Results.NoContent();
 })
@@ -407,7 +412,7 @@ app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId) =>
 .WithDescription("Request to DELETE log by logbooId");
 
 
-app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
+app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId, CancellationToken ct) =>
 {
     var logbook = await db.Logbooks
                         .Where(l=> l.GroupId == groupId)
@@ -425,7 +430,7 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
                             AbsenceReason = u.AbsenceReason,
                             AbsenceTime = u.CreatedAt
                         })
-                        .ToArrayAsync();
+                        .ToArrayAsync(ct);
     return Results.Ok(logbook);
 })
 .RequireRateLimiting("token")
@@ -433,11 +438,17 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId) =>
 .WithTags("Logbook")
 .WithDescription("Request to GET log by groupId");
 
-app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, HttpContext http, IConfiguration cfg, Login dto) =>
+app.MapPost("/login", async (
+    AppDbContext db, 
+    IPasswordHasher<User> hasher, 
+    HttpContext http, 
+    IConfiguration cfg, 
+    Login dto, 
+    CancellationToken ct) =>
 {
     var user = await db.Users
         .Include(u=>u.Role)
-        .FirstOrDefaultAsync(u=> u.Name == dto.Name);
+        .FirstOrDefaultAsync(u=> u.Name == dto.Name, ct);
 
     if (user == null) return Results.Unauthorized();
 
@@ -446,7 +457,7 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
 
     user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
 
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
 
     http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
 
@@ -454,34 +465,34 @@ app.MapPost("/login", async (AppDbContext db, IPasswordHasher<User> hasher, Http
 })
 .RequireRateLimiting("token");
 
-app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration cfg) =>
+app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration cfg, CancellationToken ct) =>
 {
     var refreshToken = http.Request.Cookies["refreshToken"];
     if (refreshToken == null) return Results.NotFound();
 
     var user = await db.Users
         .Include(u=>u.Role)
-        .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken);
+        .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken, ct);
     if (user==null) return Results.Unauthorized();
 
     if (user.RefreshTokenExpires < DateTime.UtcNow) return Results.Unauthorized();
 
     user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
 
     http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
     return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
 .RequireRateLimiting("token");
 
-app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpContext http) =>
+app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpContext http, CancellationToken ct) =>
 {
     var success = int.TryParse(claims.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
     if (!success) return Results.Unauthorized();
     var user = await db.Users
         .Include(u=> u.Group)
         .Include(u=> u.Role)
-        .FirstOrDefaultAsync(u=> u.Id == userId);
+        .FirstOrDefaultAsync(u=> u.Id == userId, ct);
     if (user == null) return Results.Unauthorized();
     var userInfo = new
     {
@@ -500,32 +511,37 @@ app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpCont
 .RequireRateLimiting("token")
 .RequireAuthorization();
 
-app.MapPost("/users/{id}archive", async (AppDbContext db, int id) =>
+app.MapPost("/users/{id}archive", async (AppDbContext db, int id, CancellationToken ct) =>
 {
-    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == id);
+    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == id, ct);
     if (user == null) return Results.NotFound();
     if (user.IsArchive == true) return Results.BadRequest();
     user.Archived();
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent(); 
 })
 .RequireAuthorization(p=> p.RequireRole("admin"))
 .RequireRateLimiting("token");
 
-app.MapPost("/users/set-password", async (AppDbContext db, ClaimsPrincipal claims, IPasswordHasher <User> hasher,string newPassword) =>
+app.MapPost("/users/set-password", async (
+    AppDbContext db, 
+    ClaimsPrincipal claims, 
+    IPasswordHasher <User> hasher,
+    string newPassword,
+    CancellationToken ct) =>
 {
     var currentUser = int.Parse(claims.FindFirstValue(ClaimTypes.NameIdentifier)!);
-    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == currentUser);
+    var user = await db.Users.FirstOrDefaultAsync(u=> u.Id == currentUser, ct);
     if (user == null) return Results.NotFound();
     if (user.IsArchive == true) return Results.Conflict();
     user.ChangePassword(user.PasswordHash, hasher.HashPassword(user,newPassword));
-    await db.SaveChangesAsync();
+    await db.SaveChangesAsync(ct);
     return Results.NoContent(); 
 })
 .RequireAuthorization()
 .RequireRateLimiting("token");
 
-app.MapGet("/schedules", async (AppDbContext db ) => 
+app.MapGet("/schedules", async (AppDbContext db, CancellationToken ct) => 
 {
     var schedules = await db.Schedules
         .Include(s=> s.Group)
@@ -539,17 +555,17 @@ app.MapGet("/schedules", async (AppDbContext db ) =>
             StartAt = p.StartTime,
             EndAt = p.EndTime
         })
-        .ToArrayAsync();
+        .ToArrayAsync(ct);
     return Results.Ok(schedules);
 })
 .RequireAuthorization(p=> p.RequireRole("admin"))
 .RequireRateLimiting("token");
 
-app.MapPost("/schedules/", async (AppDbContext db, CreateSchedule dto) =>
+app.MapPost("/schedules/", async (AppDbContext db, CreateSchedule dto, CancellationToken ct) =>
 {
     var schedule = new Schedule(dto.GroupId, dto.LessonId, dto.Date, dto.StartTime, dto.EndTime);
-    await db.Schedules.AddAsync(schedule);
-    await db.SaveChangesAsync();
+    await db.Schedules.AddAsync(schedule, ct);
+    await db.SaveChangesAsync(ct);
     return Results.Created("/schedules","");
 })
 .RequireAuthorization("admin")
