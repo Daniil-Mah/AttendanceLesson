@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics;
 using AttendanceLesson.Extension;
+using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
@@ -459,11 +460,14 @@ app.MapPost("/login", async (
     if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success)
         return Results.Unauthorized();
 
-    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow);
+    var refresh = RefreshToken.GenerateRefreshToken();
+    var refreshHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(refresh)));
+
+    user.UpdateRefreshInfo(refreshHash, DateTime.UtcNow.AddDays(7));
 
     await db.SaveChangesAsync(ct);
 
-    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
+    http.AppendCookiesInfo("refreshToken", refresh , (DateTime)user.RefreshTokenExpires);
 
     return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
@@ -472,19 +476,30 @@ app.MapPost("/login", async (
 app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration cfg, CancellationToken ct) =>
 {
     var refreshToken = http.Request.Cookies["refreshToken"];
-    if (refreshToken == null) return Results.NotFound();
-
+    if (refreshToken == null) return Results.Unauthorized();
+    
+    var refreshHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken)));
+    
     var user = await db.Users
         .Include(u=>u.Role)
-        .FirstOrDefaultAsync(u=> u.RefreshToken == refreshToken, ct);
+        .FirstOrDefaultAsync(u=> u.RefreshToken == refreshHash, ct);
     if (user==null) return Results.Unauthorized();
 
-    if (user.RefreshTokenExpires < DateTime.UtcNow) return Results.Unauthorized();
+    if (user.RefreshTokenExpires is null || user.RefreshTokenExpires < DateTime.UtcNow) 
+    {
+        user.RevokeRefresh();
+        await db.SaveChangesAsync(ct);
+        return Results.Unauthorized();
+    }
 
-    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow);
+    var newRefresh = RefreshToken.GenerateRefreshToken();
+    var newRefreshHash =  Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(newRefresh)));
+
+    user.UpdateRefreshInfo(newRefreshHash, DateTime.UtcNow.AddDays(7));
+
     await db.SaveChangesAsync(ct);
 
-    http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
+    http.AppendCookiesInfo("refreshToken", newRefresh , (DateTime)user.RefreshTokenExpires);
     return Results.Ok(new { accessToken = JWT.GenToken(user, cfg)});
 })
 .RequireRateLimiting("token");

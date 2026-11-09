@@ -86,6 +86,12 @@ public class User
         RefreshTokenExpires = expires;
     }
 
+    public void RevokeRefresh()
+    {
+        RefreshToken = null;
+        RefreshTokenExpires = null;
+    }
+
     public void SetFields (UpdateUser dto)
     {
         var updateGroup = typeof(User).GetProperties();

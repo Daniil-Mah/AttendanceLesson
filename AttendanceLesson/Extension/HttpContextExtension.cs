@@ -8,7 +8,7 @@ public static class HttpContextExtension
         {
             HttpOnly = false,
             Secure = false,
-            Expires = expires.AddDays(7),
+            Expires = expires,
             SameSite = SameSiteMode.Strict,
             Path = path
         });
