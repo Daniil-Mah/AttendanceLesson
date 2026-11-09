@@ -75,6 +75,7 @@ builder.Services.AddRateLimiter(option=>
 builder.Services.AddHostedService<SetAbsence>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IPasswordHasher<CreateUser>, PasswordHasher<CreateUser>>();
+builder.Services.AddValidation();
 
 var app = builder.Build();
 app.UseExceptionHandler(opt=> opt.Run(async context =>

@@ -122,10 +122,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Schedule>(e =>
         {
             e.HasKey(s=> s.Id);
+            e.Property(s=> s.LessonId);
+            e.Property(s=> s.GroupId);
+            e.Property(s=> s.StartTime);
+            e.Property(s=> s.EndTime);
+
+            e.HasOne(s=> s.Group).WithMany().HasForeignKey(s=> s.GroupId);
+            e.HasOne(s=> s.Lesson).WithMany().HasForeignKey(s=> s.LessonId);
+
+
             e.ToTable(t=> t.HasCheckConstraint
             (
                 "ck_time",
-                "StartTime < EndTime"    
+                "\"StartTime\" < \"EndTime\""    
             ));
         }); 
     }

@@ -111,7 +111,7 @@ namespace AttendanceLesson.Migrations
 
                     b.HasIndex("UserPlaceId");
 
-                    b.HasIndex("UserId", "LessonId")
+                    b.HasIndex("UserId", "LessonId", "CreatedAt")
                         .IsUnique();
 
                     b.ToTable("Logbooks", t =>
@@ -166,21 +166,14 @@ namespace AttendanceLesson.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Date")
-                        .IsUnique();
-
-                    b.HasIndex("EndTime")
-                        .IsUnique();
-
                     b.HasIndex("GroupId");
 
-                    b.HasIndex("LessonId")
-                        .IsUnique();
+                    b.HasIndex("LessonId");
 
-                    b.HasIndex("StartTime")
-                        .IsUnique();
-
-                    b.ToTable("Schedules");
+                    b.ToTable("Schedules", t =>
+                        {
+                            t.HasCheckConstraint("ck_time", "\"StartTime\" < \"EndTime\"");
+                        });
                 });
 
             modelBuilder.Entity("AttendanceLesson.DataBase.Models.User", b =>
