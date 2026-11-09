@@ -339,18 +339,18 @@ app.MapGet("/logbooks" , async(AppDbContext db, CancellationToken ct) =>
         .Include(l=> l.User)
         .Include(l=> l.UserPlace)
         .GroupBy(l=> l.Group).Select( r=>  new LogBookToGroup
-        {
-            Name = r.Key.Name,
-            Info = r.Select(a=> new Info
-            {
-                User = a.User.Name,
-                UserPlace = a.UserPlace.Name,
-                LessonId = a.LessonId,
-                AbsenceDuration = a.AbsenceDuration,
-                AbsenceReason = a.AbsenceReason,
-                AbsenceTime = a.CreatedAt
-            }).ToArray()
-        }
+        (
+            r.Key.Name,
+            r.Select(a=> new Info
+            (
+                a.User.Name,
+                a.UserPlace.Name,
+                a.LessonId,
+                a.AbsenceDuration,
+                a.AbsenceReason,
+                a.CreatedAt
+            )).ToArray()
+        )
         ).ToArrayAsync();
     return Results.Ok(logs);
 })
@@ -426,15 +426,15 @@ app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId, Cancellat
         .Include(l=> l.User)
         .Include(l=> l.UserPlace)
         .OrderBy(r=> r.CreatedAt)
-        .Select(u => new Info
-        {
-            User = u.User.Name,
-            UserPlace = u.UserPlace.Name,
-            LessonId = u.LessonId,
-            AbsenceDuration = u.AbsenceDuration,
-            AbsenceReason = u.AbsenceReason,
-            AbsenceTime = u.CreatedAt
-        })
+        .Select(a=> new Info
+            (
+                a.User.Name,
+                a.UserPlace.Name,
+                a.LessonId,
+                a.AbsenceDuration,
+                a.AbsenceReason,
+                a.CreatedAt
+            ))
         .ToArrayAsync(ct);
     return Results.Ok(logbook);
 })

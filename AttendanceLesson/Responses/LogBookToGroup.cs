@@ -2,18 +2,9 @@ using AttendanceLesson.DataBase.Models;
 
 namespace AttendanceLesson.Responses;
 
-public class LogBookToGroup
-{
-    public string Name {get;set;}
-    public Info[] Info {get;set;}
-}
+public record LogBookToGroup (string Name, Info[] Info);
 
-public class Info
-{
-    public DateTime AbsenceTime { get; set; }
-    public string User { get; set; }
-    public string UserPlace {get;set;}
-    public int LessonId { get; set; }
-    public TimeSpan AbsenceDuration { get; set; }
-    public Status? AbsenceReason {get;set;}
-}
+public record Info (
+    string User, string UserPlace, int LessonId, 
+    TimeSpan AbsenceDuration, Status? AbsenceReason, DateTime AbsenceTime 
+);
