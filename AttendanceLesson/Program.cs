@@ -540,6 +540,7 @@ app.MapGet("/schedules", async (AppDbContext db ) =>
             EndAt = p.EndTime
         })
         .ToArrayAsync();
+    return Results.Ok(schedules);
 })
 .RequireAuthorization(p=> p.RequireRole("admin"))
 .RequireRateLimiting("token");
@@ -549,6 +550,7 @@ app.MapPost("/schedules/", async (AppDbContext db, CreateSchedule dto) =>
     var schedule = new Schedule(dto.GroupId, dto.LessonId, dto.Date, dto.StartTime, dto.EndTime);
     await db.Schedules.AddAsync(schedule);
     await db.SaveChangesAsync();
+    return Results.Created("/schedules","");
 })
 .RequireAuthorization("admin")
 .RequireRateLimiting("token");

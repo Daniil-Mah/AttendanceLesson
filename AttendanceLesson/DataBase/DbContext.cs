@@ -122,22 +122,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Schedule>(e =>
         {
             e.HasKey(s=> s.Id);
-
-            e.Property(s=> s.GroupId).IsRequired();
-            e.HasIndex(s=>s.GroupId).IsUnique();
-
-            e.Property(s=> s.LessonId).IsRequired();
-            e.HasIndex(s=>s.LessonId).IsUnique();
-
-            e.Property(s=> s.Date).IsRequired();
-            e.HasIndex(s=>s.Date).IsUnique();  
-
-            e.Property(s=> s.StartTime).IsRequired();
-            e.HasIndex(s=>s.StartTime).IsUnique();  
-            
-            e.Property(s=> s.EndTime).IsRequired();
-            e.HasIndex(s=>s.EndTime).IsUnique();  
-
             e.ToTable(t=> t.HasCheckConstraint
             (
                 "ck_time",
