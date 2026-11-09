@@ -339,22 +339,21 @@ app.MapGet("/logbooks" , async(AppDbContext db, CancellationToken ct) =>
         .Include(l=> l.Lesson)
         .Include(l=> l.User)
         .Include(l=> l.UserPlace)
-        .ToArrayAsync(ct);
-    var result = logs.GroupBy(l=> l.Group).Select( r=>  new LogBookToGroup
-    {
-        Name = r.Key.Name,
-        Info = r.Select(a=> new Info
+        .GroupBy(l=> l.Group).Select( r=>  new LogBookToGroup
         {
-            User = a.User.Name,
-            UserPlace = a.UserPlace.Name,
-            LessonId = a.LessonId,
-            AbsenceDuration = a.AbsenceDuration,
-            AbsenceReason = a.AbsenceReason,
-            AbsenceTime = a.CreatedAt
-        }).ToArray()
-    }
-    ).ToArray();
-    return Results.Ok(result);
+            Name = r.Key.Name,
+            Info = r.Select(a=> new Info
+            {
+                User = a.User.Name,
+                UserPlace = a.UserPlace.Name,
+                LessonId = a.LessonId,
+                AbsenceDuration = a.AbsenceDuration,
+                AbsenceReason = a.AbsenceReason,
+                AbsenceTime = a.CreatedAt
+            }).ToArray()
+        }
+        ).ToArrayAsync();
+    return Results.Ok(logs);
 })
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
