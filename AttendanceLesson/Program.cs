@@ -91,7 +91,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-app.MapGet("/roles", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Roles.ToArrayAsync(ct)))
+app.MapGet("/roles", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Roles.AsNoTracking().ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Role");
@@ -120,7 +120,7 @@ app.MapDelete("/roles/{roleId}", async (AppDbContext db, int roleId, Cancellatio
 
 app.MapGet("/roles/{roleId}", async (AppDbContext db, int roleId, CancellationToken ct) =>
 {
-    var role = await db.Roles.FirstOrDefaultAsync(r=> r.Id==roleId, ct);
+    var role = await db.Roles.AsNoTracking().FirstOrDefaultAsync(r=> r.Id==roleId, ct);
     return role != null ? Results.Ok(role) : Results.NotFound();
 })
 .RequireRateLimiting("token")
@@ -142,6 +142,7 @@ app.MapPatch("/roles/{roleId}",async (AppDbContext db, UpdateRole dto, int roleI
 app.MapGet("/users", async (AppDbContext db, CancellationToken ct) =>
 {
     var users = await db.Users
+        .AsNoTracking()
         .Include(u => u.Role)
         .Select(u => new UserResponses
         {
@@ -184,6 +185,7 @@ app.MapDelete("/users/{userId}", async (AppDbContext db, int userId, Cancellatio
 app.MapGet("/users/{userId}", async (AppDbContext db, int userId, CancellationToken ct) =>
 {
     var user = await db.Users
+        .AsNoTracking()
         .Include(u=> u.Role)
         .Include(u=> u.Group)        
         .FirstOrDefaultAsync(u => u.Id == userId, ct);
@@ -217,7 +219,7 @@ app.MapPatch("/users/{userId}", async (AppDbContext db, int userId, UpdateUser d
 .RequireAuthorization("admin")
 .WithTags("User");
 
-app.MapGet("/groups", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Groups.ToArrayAsync(ct)))
+app.MapGet("/groups", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Groups.AsNoTracking().ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Group");
@@ -248,7 +250,7 @@ app.MapDelete("/groups/{groupId}", async (AppDbContext db, int groupId, Cancella
 
 app.MapGet("/groups/{groupId}", async (AppDbContext db, int groupId, CancellationToken ct) =>
 {
-    var group = await db.Groups.FirstOrDefaultAsync(g=> g.Id==groupId, ct);
+    var group = await db.Groups.AsNoTracking().FirstOrDefaultAsync(g=> g.Id==groupId, ct);
     return group != null ? Results.Ok(group) : Results.NotFound();
 })
 .RequireRateLimiting("token")
@@ -270,7 +272,7 @@ app.MapPatch("/groups/{groupId}",async (AppDbContext db, UpdateGroup dto, int gr
 .WithTags("Group")
 .WithDescription("Request to PATCH group by groupId");
 
-app.MapGet("/lessons", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Lessons.ToArrayAsync(ct)))
+app.MapGet("/lessons", async (AppDbContext db, CancellationToken ct) => Results.Ok(await db.Lessons.AsNoTracking().ToArrayAsync(ct)))
 .RequireRateLimiting("token")
 .RequireAuthorization("admin")
 .WithTags("Lesson")
@@ -304,7 +306,7 @@ app.MapDelete("/lessons/{lessonId}", async (AppDbContext db, int lessonId, Cance
 
 app.MapGet("/lessons/{lessonId}", async (AppDbContext db, int lessonId, CancellationToken ct) =>
 {
-    var lesson = await db.Lessons.FirstOrDefaultAsync(l=> l.Id==lessonId, ct);
+    var lesson = await db.Lessons.AsNoTracking().FirstOrDefaultAsync(l=> l.Id==lessonId, ct);
     return lesson != null ? Results.Ok(lesson) : Results.NotFound();
 })
 .RequireRateLimiting("token")
@@ -330,6 +332,7 @@ app.MapPatch("/lessons/{lessonId}",async (AppDbContext db, UpdateLesson dto, int
 app.MapGet("/logbooks" , async(AppDbContext db, CancellationToken ct) =>
 {
     var logs = await db.Logbooks
+        .AsNoTracking()
         .Include(l=> l.Group)
         .Include(l=> l.Lesson)
         .Include(l=> l.User)
@@ -415,22 +418,23 @@ app.MapDelete("/logbooks/{logbookId}", async (AppDbContext db, int logbookId, Ca
 app.MapGet("/logbooks/{groupId}", async (AppDbContext db, int groupId, CancellationToken ct) =>
 {
     var logbook = await db.Logbooks
-                        .Where(l=> l.GroupId == groupId)
-                        .Include(l=> l.Group)
-                        .Include(l=> l.Lesson)
-                        .Include(l=> l.User)
-                        .Include(l=> l.UserPlace)
-                        .OrderBy(r=> r.CreatedAt)
-                        .Select(u => new Info
-                        {
-                            User = u.User.Name,
-                            UserPlace = u.UserPlace.Name,
-                            LessonId = u.LessonId,
-                            AbsenceDuration = u.AbsenceDuration,
-                            AbsenceReason = u.AbsenceReason,
-                            AbsenceTime = u.CreatedAt
-                        })
-                        .ToArrayAsync(ct);
+        .AsNoTracking()
+        .Where(l=> l.GroupId == groupId)
+        .Include(l=> l.Group)
+        .Include(l=> l.Lesson)
+        .Include(l=> l.User)
+        .Include(l=> l.UserPlace)
+        .OrderBy(r=> r.CreatedAt)
+        .Select(u => new Info
+        {
+            User = u.User.Name,
+            UserPlace = u.UserPlace.Name,
+            LessonId = u.LessonId,
+            AbsenceDuration = u.AbsenceDuration,
+            AbsenceReason = u.AbsenceReason,
+            AbsenceTime = u.CreatedAt
+        })
+        .ToArrayAsync(ct);
     return Results.Ok(logbook);
 })
 .RequireRateLimiting("token")
@@ -455,7 +459,7 @@ app.MapPost("/login", async (
     if (hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) != PasswordVerificationResult.Success)
         return Results.Unauthorized();
 
-    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
+    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow);
 
     await db.SaveChangesAsync(ct);
 
@@ -477,7 +481,7 @@ app.MapPost("/refresh", async (AppDbContext db, HttpContext http, IConfiguration
 
     if (user.RefreshTokenExpires < DateTime.UtcNow) return Results.Unauthorized();
 
-    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
+    user.UpdateRefreshInfo(RefreshToken.GenerateRefreshToken(), DateTime.UtcNow);
     await db.SaveChangesAsync(ct);
 
     http.AppendCookiesInfo("refreshToken", user.RefreshToken , (DateTime)user.RefreshTokenExpires);
@@ -490,6 +494,7 @@ app.MapGet("/users/me", async (AppDbContext db, ClaimsPrincipal claims, HttpCont
     var success = int.TryParse(claims.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
     if (!success) return Results.Unauthorized();
     var user = await db.Users
+        .AsNoTracking()
         .Include(u=> u.Group)
         .Include(u=> u.Role)
         .FirstOrDefaultAsync(u=> u.Id == userId, ct);
@@ -544,6 +549,7 @@ app.MapPost("/users/set-password", async (
 app.MapGet("/schedules", async (AppDbContext db, CancellationToken ct) => 
 {
     var schedules = await db.Schedules
+        .AsNoTracking()
         .Include(s=> s.Group)
         .Include(s=> s.Lesson)
         .Select(p=> new
