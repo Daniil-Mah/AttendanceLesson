@@ -167,7 +167,7 @@ app.MapPost("/users/", async (IPasswordHasher<CreateUser> hasher, AppDbContext d
     return Results.Created("/users","User is created");
 })
 .RequireRateLimiting("token")
-.RequireAuthorization("admin")
+// .RequireAuthorization("admin")
 .WithTags("User");
 
 app.MapDelete("/users/{userId}", async (AppDbContext db, int userId, CancellationToken ct) =>
@@ -282,7 +282,7 @@ app.MapGet("/lessons", async (AppDbContext db, CancellationToken ct) => Results.
 
 app.MapPost("/lessons/", async (AppDbContext db, CreateLesson dto, CancellationToken ct) =>
 {
-    await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower()), ct);
+    await db.Lessons.AddAsync(new Lesson (dto.Name.ToLower(), dto.TeacherId), ct);
     await db.SaveChangesAsync(ct);
     return Results.Created("/lesson", "lesson is created");
 })
@@ -338,6 +338,7 @@ app.MapGet("/logbooks" , async(AppDbContext db, CancellationToken ct) =>
         .Include(l=> l.Group)
         .Include(l=> l.Lesson)
         .Include(l=> l.User)
+        .Include(l=> l.UserPlace)
         .ToArrayAsync(ct);
     var result = logs.GroupBy(l=> l.Group).Select( r=>  new LogBookToGroup
     {

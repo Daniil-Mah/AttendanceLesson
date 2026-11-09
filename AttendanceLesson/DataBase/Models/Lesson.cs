@@ -29,9 +29,10 @@ public class Lesson
     public User Teacher {get;set;}
 
     private Lesson () {}
-    public Lesson (string name)
+    public Lesson (string name, int teacherId)
     {
         Name = name;
+        TeacherId = teacherId;
     }
     public void SetFields (UpdateLesson dto)
     {

@@ -40,6 +40,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Name)
                 .IsRequired()
                 .HasMaxLength(200);
+            e.Property(l=> l.TeacherId);
+            e.HasOne(r=>r.Teacher).WithMany().HasForeignKey(l=>l.TeacherId);
         });
 
         modelBuilder.Entity<User>(e =>
