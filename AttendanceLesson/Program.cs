@@ -594,3 +594,4 @@ app.MapPost("/schedules/", async (AppDbContext db, CreateSchedule dto, Cancellat
 
 
 app.Run();
+public partial class Program { }
